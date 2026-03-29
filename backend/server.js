@@ -321,6 +321,207 @@ app.post('/api/send-report', auth, async (req, res) => {
 // Serve uploaded files
 app.use('/uploads', express.static(uploadDir));
 
+// ============ ADMIN PANEL - SHOW DATABASE CONTENTS ============
+app.get('/admin', async (req, res) => {
+    try {
+        // Get all users
+        const users = await allQuery('SELECT id, name, email, phone, createdAt FROM users ORDER BY createdAt DESC');
+        
+        // Get all transactions
+        const transactions = await allQuery('SELECT * FROM transactions ORDER BY date DESC LIMIT 50');
+        
+        // Get statistics
+        const userCount = users.length;
+        const transactionCount = transactions.length;
+        const totalIncome = await allQuery('SELECT SUM(amount) as total FROM transactions WHERE type = "income"');
+        const totalExpense = await allQuery('SELECT SUM(amount) as total FROM transactions WHERE type = "expense"');
+        
+        // Create HTML page
+        const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SmartFinance - Database Admin Panel</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: white;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 32px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .stat-card h3 {
+            color: #666;
+            margin-bottom: 10px;
+        }
+        .stat-card .number {
+            font-size: 36px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .section {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow-x: auto;
+        }
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        tr:hover {
+            background: #f8f9ff;
+        }
+        .income {
+            color: #4caf50;
+            font-weight: bold;
+        }
+        .expense {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 30px;
+            padding: 20px;
+        }
+        .back-link {
+            display: inline-block;
+            background: white;
+            color: #667eea;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            margin-bottom: 20px;
+        }
+        .back-link:hover {
+            background: #f0f0f0;
+        }
+        @media (max-width: 768px) {
+            th, td { font-size: 12px; padding: 8px; }
+            .stat-card .number { font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link">← Back to App</a>
+        <h1>💰 SmartFinance - Database Admin Panel</h1>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <h3>📊 Total Users</h3>
+                <div class="number">${userCount}</div>
+            </div>
+            <div class="stat-card">
+                <h3>💸 Total Transactions</h3>
+                <div class="number">${transactionCount}</div>
+            </div>
+            <div class="stat-card">
+                <h3>📈 Total Income</h3>
+                <div class="number">₹${totalIncome[0].total || 0}</div>
+            </div>
+            <div class="stat-card">
+                <h3>📉 Total Expense</h3>
+                <div class="number">₹${totalExpense[0].total || 0}</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>👥 Registered Users (${userCount})</h2>
+            ${userCount === 0 ? '<p style="color: #999; text-align: center;">No users registered yet.</p>' : `
+            </table>
+                <thead>
+                    <tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Registered Date</th></tr>
+                </thead>
+                <tbody>
+                    ${users.map(u => `<tr><td>${u.id}</td><td>${u.name}</td><td>${u.email}</td><td>${u.phone || '-'}</td><td>${u.createdAt}</td></tr>`).join('')}
+                </tbody>
+            </table>
+            `}
+        </div>
+        
+        <div class="section">
+            <h2>📋 Recent Transactions (${transactionCount})</h2>
+            ${transactionCount === 0 ? '<p style="color: #999; text-align: center;">No transactions added yet.</p>' : `
+            <table>
+                <thead>
+                    <tr><th>Date</th><th>Description</th><th>Category</th><th>Type</th><th>Amount</th><th>Notes</th></tr>
+                </thead>
+                <tbody>
+                    ${transactions.map(t => `<tr>
+                        <td>${new Date(t.date).toLocaleDateString()}</td>
+                        <td>${t.description}</td>
+                        <td>${t.category}</td>
+                        <td class="${t.type}">${t.type === 'income' ? '💰 Income' : '💸 Expense'}</td>
+                        <td class="${t.type}">${t.type === 'income' ? '+' : '-'}₹${t.amount}</td>
+                        <td>${t.notes || '-'}</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>
+            `}
+        </div>
+        
+        <div class="footer">
+            <p>📁 Database Location: /opt/render/project/src/backend/database.db</p>
+            <p>🕒 Last Updated: ${new Date().toLocaleString()}</p>
+            <p>SmartFinance Tracker - All data is stored securely in SQLite database</p>
+        </div>
+    </div>
+</body>
+</html>
+        `;
+        res.send(html);
+    } catch (error) {
+        res.send(`<h1>Error</h1><p>${error.message}</p>`);
+    }
+});
+
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
