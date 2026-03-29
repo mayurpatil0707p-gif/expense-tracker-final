@@ -123,6 +123,29 @@ function auth(req, res, next) {
     }
 }
 
+// ============ ADMIN PASSWORD PROTECTION ============
+const ADMIN_PASSWORD = '1234567890';  // Your admin password
+
+function checkAuth(req, res, next) {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader) {
+        res.setHeader('WWW-Authenticate', 'Basic realm="Admin Access"');
+        return res.status(401).send('Authentication required');
+    }
+    
+    const base64 = authHeader.split(' ')[1];
+    const credentials = Buffer.from(base64, 'base64').toString('utf8');
+    const [username, password] = credentials.split(':');
+    
+    if (password === ADMIN_PASSWORD) {
+        return next();
+    }
+    
+    res.setHeader('WWW-Authenticate', 'Basic realm="Admin Access"');
+    return res.status(401).send('Invalid password');
+}
+
 // ============ AUTH ROUTES ============
 
 // Register
@@ -185,18 +208,23 @@ app.post('/api/auth/forgot-password', async (req, res) => {
         const user = await getQuery('SELECT * FROM users WHERE email = ?', [email]);
         if (!user) return res.status(404).json({ error: 'Email not found' });
         
-        const token = crypto.randomBytes(32).toString('hex');
-        const expiry = Date.now() + 3600000;
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const resetTokenExpiry = Date.now() + 3600000;
         
-        await runQuery('UPDATE users SET resetToken = ?, resetTokenExpiry = ? WHERE id = ?', [token, expiry, user.id]);
+        await runQuery('UPDATE users SET resetToken = ?, resetTokenExpiry = ? WHERE id = ?', [resetToken, resetTokenExpiry, user.id]);
         
-        const link = `https://expense-tracker-final.onrender.com/reset-password.html?token=${token}`;
+        const resetLink = `https://expense-tracker-final-s9rs.onrender.com/reset-password.html?token=${resetToken}`;
+        
+        const emailHTML = `
+            <h1>Reset Password</h1>
+            <p>Click <a href="${resetLink}">here</a> to reset your password. This link expires in 1 hour.</p>
+        `;
         
         await transporter.sendMail({
             from: `"SmartFinance" <${EMAIL_USER}>`,
             to: email,
             subject: 'Reset Password',
-            html: `<h1>Reset Password</h1><p>Click <a href="${link}">here</a> to reset your password. This link expires in 1 hour.</p>`
+            html: emailHTML
         });
         
         res.json({ message: 'Reset link sent to your email!' });
@@ -235,9 +263,9 @@ app.put('/api/profile/update-name', auth, async (req, res) => {
 // Upload Profile Picture
 app.post('/api/profile/upload-pic', auth, upload.single('profilePic'), async (req, res) => {
     try {
-        const url = `https://expense-tracker-final.onrender.com/uploads/${req.file.filename}`;
-        await runQuery('UPDATE users SET profilePic = ? WHERE id = ?', [url, req.userId]);
-        res.json({ profilePic: url });
+        const profilePicUrl = `https://expense-tracker-final-s9rs.onrender.com/uploads/${req.file.filename}`;
+        await runQuery('UPDATE users SET profilePic = ? WHERE id = ?', [profilePicUrl, req.userId]);
+        res.json({ profilePic: profilePicUrl });
     } catch (error) {
         res.status(500).json({ error: 'Upload failed' });
     }
@@ -321,27 +349,49 @@ app.post('/api/send-report', auth, async (req, res) => {
 // Serve uploaded files
 app.use('/uploads', express.static(uploadDir));
 
-// ============ ADMIN PANEL - SHOW DATABASE CONTENTS ============
-app.get('/admin', async (req, res) => {
+// ============ ADMIN PANEL - PASSWORD PROTECTED ============
+app.get('/admin', checkAuth, async (req, res) => {
     try {
         // Get all users
         const users = await allQuery('SELECT id, name, email, phone, createdAt FROM users ORDER BY createdAt DESC');
         
-        // Get all transactions
-        const transactions = await allQuery('SELECT * FROM transactions ORDER BY date DESC LIMIT 50');
+        // Get selected user (from query parameter)
+        const selectedUserId = req.query.user;
         
-        // Get statistics
-        const userCount = users.length;
-        const transactionCount = transactions.length;
-        const totalIncome = await allQuery('SELECT SUM(amount) as total FROM transactions WHERE type = "income"');
-        const totalExpense = await allQuery('SELECT SUM(amount) as total FROM transactions WHERE type = "expense"');
+        // Get transactions for selected user
+        let selectedUser = null;
+        let userTransactions = [];
         
-        // Create HTML page
-        const html = `
+        if (selectedUserId) {
+            selectedUser = await allQuery('SELECT id, name, email, phone, createdAt FROM users WHERE id = ?', [selectedUserId]);
+            selectedUser = selectedUser[0];
+            userTransactions = await allQuery('SELECT * FROM transactions WHERE userId = ? ORDER BY date DESC', [selectedUserId]);
+        }
+        
+        // Calculate totals for selected user
+        let totalIncome = 0;
+        let totalExpense = 0;
+        let incomeCount = 0;
+        let expenseCount = 0;
+        
+        userTransactions.forEach(t => {
+            if (t.type === 'income') {
+                totalIncome += t.amount;
+                incomeCount++;
+            } else {
+                totalExpense += t.amount;
+                expenseCount++;
+            }
+        });
+        
+        const balance = totalIncome - totalExpense;
+        
+        // Generate HTML
+        let html = `
 <!DOCTYPE html>
 <html>
 <head>
-    <title>SmartFinance - Database Admin Panel</title>
+    <title>SmartFinance - Admin Panel</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
@@ -358,10 +408,76 @@ app.get('/admin', async (req, res) => {
         }
         h1 {
             color: white;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             text-align: center;
             font-size: 32px;
         }
+        .subtitle {
+            color: rgba(255,255,255,0.8);
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .back-link {
+            display: inline-block;
+            background: white;
+            color: #667eea;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            margin-bottom: 20px;
+        }
+        .back-link:hover {
+            background: #f0f0f0;
+        }
+        
+        /* Users Grid */
+        .users-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .user-card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .user-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .user-card.selected {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        .user-card.selected .user-email,
+        .user-card.selected .user-phone {
+            color: rgba(255,255,255,0.8);
+        }
+        .user-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .user-email {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .user-phone {
+            font-size: 12px;
+            color: #999;
+        }
+        .user-date {
+            font-size: 11px;
+            color: #aaa;
+            margin-top: 10px;
+        }
+        
+        /* Stats for selected user */
         .stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -373,23 +489,34 @@ app.get('/admin', async (req, res) => {
             border-radius: 15px;
             padding: 20px;
             text-align: center;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
         .stat-card h3 {
             color: #666;
             margin-bottom: 10px;
+            font-size: 14px;
         }
         .stat-card .number {
-            font-size: 36px;
+            font-size: 32px;
             font-weight: bold;
+        }
+        .income-number {
+            color: #4caf50;
+        }
+        .expense-number {
+            color: #ff6b6b;
+        }
+        .balance-number {
             color: #667eea;
         }
+        
+        /* Transactions Table */
         .section {
             background: white;
             border-radius: 20px;
             padding: 25px;
             margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
             overflow-x: auto;
         }
         .section h2 {
@@ -424,93 +551,101 @@ app.get('/admin', async (req, res) => {
             color: #ff6b6b;
             font-weight: bold;
         }
+        .empty-message {
+            text-align: center;
+            color: #999;
+            padding: 40px;
+        }
         .footer {
             text-align: center;
-            color: white;
+            color: rgba(255,255,255,0.8);
             margin-top: 30px;
             padding: 20px;
+            font-size: 12px;
         }
-        .back-link {
-            display: inline-block;
+        .no-selection {
+            text-align: center;
+            color: #999;
+            padding: 60px;
             background: white;
-            color: #667eea;
-            padding: 10px 20px;
-            border-radius: 25px;
-            text-decoration: none;
-            margin-bottom: 20px;
-        }
-        .back-link:hover {
-            background: #f0f0f0;
+            border-radius: 20px;
         }
         @media (max-width: 768px) {
+            .users-grid {
+                grid-template-columns: 1fr;
+            }
             th, td { font-size: 12px; padding: 8px; }
-            .stat-card .number { font-size: 24px; }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <a href="/" class="back-link">← Back to App</a>
-        <h1>💰 SmartFinance - Database Admin Panel</h1>
+        <h1>💰 SmartFinance - Admin Panel</h1>
+        <div class="subtitle">Click on any user to view their transactions</div>
         
-        <div class="stats">
-            <div class="stat-card">
-                <h3>📊 Total Users</h3>
-                <div class="number">${userCount}</div>
-            </div>
-            <div class="stat-card">
-                <h3>💸 Total Transactions</h3>
-                <div class="number">${transactionCount}</div>
-            </div>
-            <div class="stat-card">
-                <h3>📈 Total Income</h3>
-                <div class="number">₹${totalIncome[0].total || 0}</div>
-            </div>
-            <div class="stat-card">
-                <h3>📉 Total Expense</h3>
-                <div class="number">₹${totalExpense[0].total || 0}</div>
-            </div>
+        <div class="users-grid">
+            ${users.map(user => `
+                <div class="user-card ${selectedUserId === user.id ? 'selected' : ''}" onclick="window.location.href='/admin?user=${user.id}'">
+                    <div class="user-name">👤 ${user.name}</div>
+                    <div class="user-email">📧 ${user.email}</div>
+                    <div class="user-phone">📞 ${user.phone || 'No phone'}</div>
+                    <div class="user-date">📅 Joined: ${new Date(user.createdAt).toLocaleDateString()}</div>
+                </div>
+            `).join('')}
         </div>
         
-        <div class="section">
-            <h2>👥 Registered Users (${userCount})</h2>
-            ${userCount === 0 ? '<p style="color: #999; text-align: center;">No users registered yet.</p>' : `
-            </table>
-                <thead>
-                    <tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Registered Date</th></tr>
-                </thead>
-                <tbody>
-                    ${users.map(u => `<tr><td>${u.id}</td><td>${u.name}</td><td>${u.email}</td><td>${u.phone || '-'}</td><td>${u.createdAt}</td></tr>`).join('')}
-                </tbody>
-            </table>
-            `}
-        </div>
-        
-        <div class="section">
-            <h2>📋 Recent Transactions (${transactionCount})</h2>
-            ${transactionCount === 0 ? '<p style="color: #999; text-align: center;">No transactions added yet.</p>' : `
-            <table>
-                <thead>
-                    <tr><th>Date</th><th>Description</th><th>Category</th><th>Type</th><th>Amount</th><th>Notes</th></tr>
-                </thead>
-                <tbody>
-                    ${transactions.map(t => `<tr>
-                        <td>${new Date(t.date).toLocaleDateString()}</td>
-                        <td>${t.description}</td>
-                        <td>${t.category}</td>
-                        <td class="${t.type}">${t.type === 'income' ? '💰 Income' : '💸 Expense'}</td>
-                        <td class="${t.type}">${t.type === 'income' ? '+' : '-'}₹${t.amount}</td>
-                        <td>${t.notes || '-'}</td>
-                    </tr>`).join('')}
-                </tbody>
-            </table>
-            `}
-        </div>
+        ${selectedUserId && selectedUser ? `
+            <div class="stats">
+                <div class="stat-card">
+                    <h3>💰 Total Balance</h3>
+                    <div class="number balance-number">₹${balance.toFixed(2)}</div>
+                </div>
+                <div class="stat-card">
+                    <h3>📈 Total Income</h3>
+                    <div class="number income-number">₹${totalIncome.toFixed(2)}</div>
+                    <div style="font-size: 12px; color: #666;">${incomeCount} transactions</div>
+                </div>
+                <div class="stat-card">
+                    <h3>📉 Total Expense</h3>
+                    <div class="number expense-number">₹${totalExpense.toFixed(2)}</div>
+                    <div style="font-size: 12px; color: #666;">${expenseCount} transactions</div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2>📋 Transactions of ${selectedUser.name}</h2>
+                ${userTransactions.length === 0 ? '<div class="empty-message">No transactions yet. User hasn\'t added any income or expense.</div>' : `
+                    <table>
+                        <thead>
+                            <tr><th>Date</th><th>Description</th><th>Category</th><th>Type</th><th>Amount</th><th>Notes</th></tr>
+                        </thead>
+                        <tbody>
+                            ${userTransactions.map(t => `
+                                <tr>
+                                    <td>${new Date(t.date).toLocaleDateString()}</td>
+                                    <td>${t.description}</td>
+                                    <td>${t.category}</td>
+                                    <td class="${t.type}">${t.type === 'income' ? '💰 Income' : '💸 Expense'}</td>
+                                    <td class="${t.type}">${t.type === 'income' ? '+' : '-'}₹${t.amount}</td>
+                                    <td>${t.notes || '-'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `}
+            </div>
+        ` : `
+            <div class="no-selection">
+                <h3>Select a user from above</h3>
+                <p>Click on any user card to view their transactions, income, and expense details.</p>
+            </div>
+        `}
         
         <div class="footer">
             <p>📁 Database Location: /opt/render/project/src/backend/database.db</p>
             <p>🕒 Last Updated: ${new Date().toLocaleString()}</p>
-            <p>SmartFinance Tracker - All data is stored securely in SQLite database</p>
+            <p>SmartFinance Tracker - Each user's data is stored separately in SQLite database</p>
         </div>
     </div>
 </body>
@@ -522,9 +657,8 @@ app.get('/admin', async (req, res) => {
     }
 });
 
-// Start server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
+// ============ START SERVER ============
+app.listen(process.env.PORT || 5000, () => {
+    console.log(`🚀 Server running on port ${process.env.PORT || 5000}`);
     console.log(`✅ Database: ${dbPath}`);
 });
