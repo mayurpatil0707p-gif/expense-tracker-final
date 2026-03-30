@@ -104,21 +104,22 @@
             font-size: 14px;
         }
 
-        .floating-input {
+        .input-group {
             position: relative;
             margin-bottom: 28px;
         }
 
-        .floating-input i {
+        .input-group i.input-icon {
             position: absolute;
             left: 16px;
-            bottom: 16px;
+            top: 50%;
+            transform: translateY(-50%);
             color: var(--primary);
             font-size: 18px;
-            z-index: 1;
+            z-index: 2;
         }
 
-        .floating-input input {
+        .input-group input {
             width: 100%;
             padding: 16px 48px 16px 48px;
             background: white;
@@ -129,18 +130,18 @@
             transition: all 0.3s;
         }
 
-        body.dark .floating-input input {
+        body.dark .input-group input {
             background: #0f172a;
             color: white;
         }
 
-        .floating-input input:focus {
+        .input-group input:focus {
             outline: none;
             border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
         }
 
-        .floating-input label {
+        .input-group label {
             position: absolute;
             left: 48px;
             top: 50%;
@@ -148,10 +149,11 @@
             color: var(--gray);
             transition: all 0.3s;
             pointer-events: none;
+            z-index: 1;
         }
 
-        .floating-input input:focus ~ label,
-        .floating-input input:not(:placeholder-shown) ~ label {
+        .input-group input:focus ~ label,
+        .input-group input:not(:placeholder-shown) ~ label {
             top: -10px;
             left: 16px;
             font-size: 11px;
@@ -161,15 +163,16 @@
             color: var(--primary);
         }
 
-        body.dark .floating-input input:focus ~ label,
-        body.dark .floating-input input:not(:placeholder-shown) ~ label {
+        body.dark .input-group input:focus ~ label,
+        body.dark .input-group input:not(:placeholder-shown) ~ label {
             background: #0f172a;
         }
 
         .password-toggle {
             position: absolute;
             right: 16px;
-            bottom: 16px;
+            top: 50%;
+            transform: translateY(-50%);
             cursor: pointer;
             color: var(--gray);
             z-index: 2;
@@ -469,10 +472,10 @@
             display: none;
         }
 
-        /* Charts - Smaller size */
+        /* Charts */
         .charts-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
             gap: 24px;
             margin-bottom: 32px;
         }
@@ -492,7 +495,7 @@
         }
 
         canvas {
-            max-height: 220px;
+            max-height: 250px;
             width: 100%;
         }
 
@@ -633,10 +636,38 @@
             border: 1px solid var(--border);
         }
 
+        /* Category Selector Styling */
+        .category-selector {
+            margin-bottom: 20px;
+        }
+
+        .category-selector label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: var(--gray);
+        }
+
+        .category-selector select {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            font-size: 14px;
+            background: white;
+            color: var(--dark);
+            cursor: pointer;
+        }
+
+        body.dark .category-selector select {
+            background: #0f172a;
+            color: white;
+        }
+
         .type-selector {
             display: flex;
             gap: 15px;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
         }
 
         .type-btn {
@@ -651,10 +682,10 @@
             text-align: center;
         }
 
-        .type-btn.income { color: #10b981; }
-        .type-btn.income.active { background: #10b981; color: white; border-color: #10b981; }
-        .type-btn.expense { color: #ef4444; }
-        .type-btn.expense.active { background: #ef4444; color: white; border-color: #ef4444; }
+        .type-btn.income { color: #10b981; border-color: #10b981; }
+        .type-btn.income.active { background: #10b981; color: white; }
+        .type-btn.expense { color: #ef4444; border-color: #ef4444; }
+        .type-btn.expense.active { background: #ef4444; color: white; }
 
         /* Toast */
         .toast {
@@ -763,26 +794,26 @@
                 <div id="errorMessage" style="display:none; background:#fee2e2; color:#ef4444; padding:12px; border-radius:16px; margin-bottom:20px;"></div>
                 <form id="authForm" onsubmit="return false;">
                     <div id="nameField" style="display: none;">
-                        <div class="floating-input">
-                            <i class="fas fa-user"></i>
+                        <div class="input-group">
+                            <i class="fas fa-user input-icon"></i>
                             <input type="text" id="name" placeholder=" ">
                             <label>Full Name</label>
                         </div>
                     </div>
-                    <div class="floating-input">
-                        <i class="fas fa-envelope"></i>
+                    <div class="input-group">
+                        <i class="fas fa-envelope input-icon"></i>
                         <input type="email" id="email" placeholder=" ">
                         <label>Email Address</label>
                     </div>
                     <div id="phoneField" style="display: none;">
-                        <div class="floating-input">
-                            <i class="fas fa-phone"></i>
+                        <div class="input-group">
+                            <i class="fas fa-phone input-icon"></i>
                             <input type="tel" id="phone" placeholder=" ">
                             <label>Phone Number (Optional)</label>
                         </div>
                     </div>
-                    <div class="floating-input">
-                        <i class="fas fa-lock"></i>
+                    <div class="input-group">
+                        <i class="fas fa-lock input-icon"></i>
                         <input type="password" id="password" placeholder=" ">
                         <label>Password</label>
                         <i class="fas fa-eye password-toggle" onclick="togglePassword()"></i>
@@ -899,8 +930,8 @@
 
                 <div class="charts-grid">
                     <div class="chart-card">
-                        <h3><i class="fas fa-chart-pie"></i> Expenses by Category</h3>
-                        <canvas id="categoryChart"></canvas>
+                        <h3><i class="fas fa-chart-pie"></i> Income vs Expense</h3>
+                        <canvas id="incomeExpenseChart"></canvas>
                     </div>
                     <div class="chart-card">
                         <h3><i class="fas fa-chart-line"></i> Monthly Trend</h3>
@@ -972,13 +1003,8 @@
             </div>
             <form id="transactionForm" onsubmit="return false;">
                 <input type="hidden" id="transactionType" value="expense">
-                <div class="floating-input" style="margin-top: 20px;">
-                    <i class="fas fa-rupee-sign"></i>
-                    <input type="number" id="transactionAmount" step="0.01" required placeholder=" ">
-                    <label>Amount (₹)</label>
-                </div>
-                <div class="floating-input">
-                    <i class="fas fa-tag"></i>
+                <div class="category-selector">
+                    <label><i class="fas fa-tag"></i> Category</label>
                     <select id="transactionCategory" required>
                         <option value="Food">🍔 Food</option>
                         <option value="Travel">✈️ Travel</option>
@@ -987,13 +1013,18 @@
                         <option value="Entertainment">🎬 Entertainment</option>
                     </select>
                 </div>
-                <div class="floating-input">
-                    <i class="fas fa-pen"></i>
+                <div class="input-group" style="margin-bottom: 20px;">
+                    <i class="fas fa-rupee-sign input-icon"></i>
+                    <input type="number" id="transactionAmount" step="0.01" required placeholder=" ">
+                    <label>Amount (₹)</label>
+                </div>
+                <div class="input-group" style="margin-bottom: 20px;">
+                    <i class="fas fa-pen input-icon"></i>
                     <input type="text" id="transactionDescription" required placeholder=" ">
                     <label>Description</label>
                 </div>
-                <div class="floating-input">
-                    <i class="fas fa-calendar"></i>
+                <div class="input-group" style="margin-bottom: 20px;">
+                    <i class="fas fa-calendar input-icon"></i>
                     <input type="date" id="transactionDate">
                     <label>Date</label>
                 </div>
@@ -1007,13 +1038,13 @@
     <div id="editProfileModal" class="modal">
         <div class="modal-content">
             <h3><i class="fas fa-user-edit"></i> Edit Profile</h3>
-            <div class="floating-input">
-                <i class="fas fa-user"></i>
+            <div class="input-group" style="margin-bottom: 20px;">
+                <i class="fas fa-user input-icon"></i>
                 <input type="text" id="editName" placeholder=" ">
                 <label>Name</label>
             </div>
-            <div class="floating-input">
-                <i class="fas fa-phone"></i>
+            <div class="input-group" style="margin-bottom: 20px;">
+                <i class="fas fa-phone input-icon"></i>
                 <input type="tel" id="editPhone" placeholder=" ">
                 <label>Phone Number</label>
             </div>
@@ -1027,8 +1058,8 @@
         <div class="modal-content">
             <h3><i class="fas fa-bullseye"></i> Set <span id="budgetTypeLabel">Monthly</span> Budget</h3>
             <input type="hidden" id="budgetType">
-            <div class="floating-input">
-                <i class="fas fa-rupee-sign"></i>
+            <div class="input-group" style="margin-bottom: 20px;">
+                <i class="fas fa-rupee-sign input-icon"></i>
                 <input type="number" id="budgetAmount" placeholder=" ">
                 <label>Budget Amount (₹)</label>
             </div>
@@ -1047,28 +1078,26 @@
         const API_URL = '/api';
         let authToken = localStorage.getItem('token');
         let allTransactions = [];
-        let categoryChart, trendChart;
+        let incomeExpenseChart, trendChart;
         let currentTransactionType = 'expense';
 
-        // Motivational Quotes & Financial Tips
+        // Quotes
         const quotes = [
-            { text: "The best time to save was yesterday. The next best time is now.", icon: "💰" },
-            { text: "A penny saved is a penny earned. - Benjamin Franklin", icon: "💎" },
-            { text: "Do not save what is left after spending, but spend what is left after saving.", icon: "📊" },
-            { text: "Financial freedom is available to those who learn about it and work for it.", icon: "🚀" },
-            { text: "Rich people have small TVs and big libraries, and poor people have small libraries and big TVs.", icon: "📚" },
-            { text: "It's not how much money you make, but how much money you keep.", icon: "💪" },
-            { text: "Compound interest is the eighth wonder of the world.", icon: "✨" },
-            { text: "Track your expenses daily and you'll never wonder where your money went!", icon: "📝" }
+            "The best time to save was yesterday. The next best time is now.",
+            "A penny saved is a penny earned. - Benjamin Franklin",
+            "Do not save what is left after spending, but spend what is left after saving.",
+            "Financial freedom is available to those who learn about it and work for it.",
+            "It's not how much money you make, but how much money you keep.",
+            "Compound interest is the eighth wonder of the world.",
+            "Track your expenses daily and you'll never wonder where your money went!"
         ];
 
-        // Rotate quotes every 30 seconds
         let quoteIndex = 0;
         function rotateQuote() {
             const quoteElement = document.getElementById('quoteText');
             if (quoteElement) {
                 quoteIndex = (quoteIndex + 1) % quotes.length;
-                quoteElement.innerHTML = `"${quotes[quoteIndex].text}"`;
+                quoteElement.innerHTML = `"${quotes[quoteIndex]}"`;
             }
         }
         setInterval(rotateQuote, 30000);
@@ -1403,40 +1432,49 @@
         }
 
         function updateCharts() {
-            // Category-wise expenses
-            const categoryTotals = {};
-            allTransactions.filter(t => t.type === 'expense').forEach(t => {
-                categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
+            // Income vs Expense Chart (Pie)
+            let totalIncome = 0, totalExpense = 0;
+            allTransactions.forEach(t => {
+                if (t.type === 'income') totalIncome += t.amount;
+                else totalExpense += t.amount;
             });
             
-            const ctx1 = document.getElementById('categoryChart').getContext('2d');
-            if (categoryChart) categoryChart.destroy();
-            categoryChart = new Chart(ctx1, {
+            const ctx1 = document.getElementById('incomeExpenseChart').getContext('2d');
+            if (incomeExpenseChart) incomeExpenseChart.destroy();
+            incomeExpenseChart = new Chart(ctx1, {
                 type: 'pie',
                 data: {
-                    labels: Object.keys(categoryTotals),
+                    labels: ['Income', 'Expense'],
                     datasets: [{
-                        data: Object.values(categoryTotals),
-                        backgroundColor: Object.keys(categoryTotals).map(c => categoryColors[c] || '#64748b')
+                        data: [totalIncome, totalExpense],
+                        backgroundColor: ['#10b981', '#ef4444']
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } } }
+                options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } } }
             });
             
-            // Monthly trend - FIXED: Correct month display
+            // Monthly Trend - Correct months
             const months = [];
-            const monthlyTotals = [];
+            const monthlyIncome = [];
+            const monthlyExpense = [];
             const now = new Date();
             for (let i = 5; i >= 0; i--) {
                 const d = new Date();
                 d.setMonth(now.getMonth() - i);
                 const monthName = d.toLocaleString('default', { month: 'short' });
                 months.push(monthName);
-                const monthTotal = allTransactions.filter(t => {
+                
+                const incomeTotal = allTransactions.filter(t => {
+                    const tDate = new Date(t.date);
+                    return t.type === 'income' && tDate.getMonth() === d.getMonth() && tDate.getFullYear() === d.getFullYear();
+                }).reduce((sum, t) => sum + t.amount, 0);
+                monthlyIncome.push(incomeTotal);
+                
+                const expenseTotal = allTransactions.filter(t => {
                     const tDate = new Date(t.date);
                     return t.type === 'expense' && tDate.getMonth() === d.getMonth() && tDate.getFullYear() === d.getFullYear();
                 }).reduce((sum, t) => sum + t.amount, 0);
-                monthlyTotals.push(monthTotal);
+                monthlyExpense.push(expenseTotal);
             }
             
             const ctx2 = document.getElementById('trendChart').getContext('2d');
@@ -1445,19 +1483,28 @@
                 type: 'bar',
                 data: {
                     labels: months,
-                    datasets: [{
-                        label: 'Monthly Expenses (₹)',
-                        data: monthlyTotals,
-                        backgroundColor: '#667eea',
-                        borderRadius: 8,
-                        barPercentage: 0.7
-                    }]
+                    datasets: [
+                        {
+                            label: 'Income',
+                            data: monthlyIncome,
+                            backgroundColor: '#10b981',
+                            borderRadius: 8,
+                            barPercentage: 0.6
+                        },
+                        {
+                            label: 'Expense',
+                            data: monthlyExpense,
+                            backgroundColor: '#ef4444',
+                            borderRadius: 8,
+                            barPercentage: 0.6
+                        }
+                    ]
                 },
                 options: { 
                     responsive: true, 
                     maintainAspectRatio: true,
-                    plugins: { legend: { position: 'top', labels: { font: { size: 10 } } } },
-                    scales: { y: { beginAtZero: true } }
+                    plugins: { legend: { position: 'top', labels: { font: { size: 11 } } } },
+                    scales: { y: { beginAtZero: true, title: { display: true, text: 'Amount (₹)' } } }
                 }
             });
         }
