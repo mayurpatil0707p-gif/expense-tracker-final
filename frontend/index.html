@@ -1432,7 +1432,7 @@
         }
 
         function updateCharts() {
-            // Income vs Expense Chart (Pie)
+            // Income vs Expense Pie Chart
             let totalIncome = 0, totalExpense = 0;
             allTransactions.forEach(t => {
                 if (t.type === 'income') totalIncome += t.amount;
@@ -1450,29 +1450,39 @@
                         backgroundColor: ['#10b981', '#ef4444']
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } } }
+                options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
             });
             
-            // Monthly Trend - Correct months
+            // Monthly Trend Bar Chart - CORRECT MONTHS (including February)
             const months = [];
             const monthlyIncome = [];
             const monthlyExpense = [];
             const now = new Date();
+            
+            // Show last 6 months
             for (let i = 5; i >= 0; i--) {
                 const d = new Date();
                 d.setMonth(now.getMonth() - i);
-                const monthName = d.toLocaleString('default', { month: 'short' });
+                
+                // Get month name (full name like January, February)
+                const monthName = d.toLocaleString('default', { month: 'long' });
                 months.push(monthName);
                 
+                // Calculate income for this month
                 const incomeTotal = allTransactions.filter(t => {
                     const tDate = new Date(t.date);
-                    return t.type === 'income' && tDate.getMonth() === d.getMonth() && tDate.getFullYear() === d.getFullYear();
+                    return t.type === 'income' && 
+                           tDate.getMonth() === d.getMonth() && 
+                           tDate.getFullYear() === d.getFullYear();
                 }).reduce((sum, t) => sum + t.amount, 0);
                 monthlyIncome.push(incomeTotal);
                 
+                // Calculate expense for this month
                 const expenseTotal = allTransactions.filter(t => {
                     const tDate = new Date(t.date);
-                    return t.type === 'expense' && tDate.getMonth() === d.getMonth() && tDate.getFullYear() === d.getFullYear();
+                    return t.type === 'expense' && 
+                           tDate.getMonth() === d.getMonth() && 
+                           tDate.getFullYear() === d.getFullYear();
                 }).reduce((sum, t) => sum + t.amount, 0);
                 monthlyExpense.push(expenseTotal);
             }
@@ -1502,9 +1512,24 @@
                 },
                 options: { 
                     responsive: true, 
-                    maintainAspectRatio: true,
-                    plugins: { legend: { position: 'top', labels: { font: { size: 11 } } } },
-                    scales: { y: { beginAtZero: true, title: { display: true, text: 'Amount (₹)' } } }
+                    plugins: { 
+                        legend: { position: 'top' },
+                        tooltip: { 
+                            callbacks: { 
+                                label: function(context) { 
+                                    return `${context.dataset.label}: ₹${context.raw.toFixed(2)}`; 
+                                } 
+                            } 
+                        }
+                    },
+                    scales: { 
+                        y: { 
+                            beginAtZero: true, 
+                            title: { display: true, text: 'Amount (₹)' },
+                            ticks: { callback: function(value) { return '₹' + value; } }
+                        },
+                        x: { title: { display: true, text: 'Month' } }
+                    }
                 }
             });
         }
