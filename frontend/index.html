@@ -120,7 +120,7 @@
 
         .floating-input input {
             width: 100%;
-            padding: 16px 16px 16px 48px;
+            padding: 16px 48px 16px 48px;
             background: white;
             border: 2px solid var(--border);
             border-radius: 16px;
@@ -172,7 +172,7 @@
             bottom: 16px;
             cursor: pointer;
             color: var(--gray);
-            z-index: 1;
+            z-index: 2;
         }
 
         .btn-gradient {
@@ -469,10 +469,10 @@
             display: none;
         }
 
-        /* Charts */
+        /* Charts - Smaller size */
         .charts-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 24px;
             margin-bottom: 32px;
         }
@@ -480,18 +480,20 @@
         .chart-card {
             background: var(--card-bg);
             border-radius: 24px;
-            padding: 24px;
+            padding: 20px;
             box-shadow: var(--shadow);
             border: 1px solid var(--border);
         }
 
         .chart-card h3 {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             color: var(--dark);
+            font-size: 16px;
         }
 
         canvas {
-            max-height: 280px;
+            max-height: 220px;
+            width: 100%;
         }
 
         /* Recent Transactions */
@@ -871,7 +873,7 @@
                 <div class="budget-section">
                     <div class="budget-card">
                         <div class="budget-header">
-                            <h4><i class="fas fa-calendar-week"></i> Monthly Budget</h4>
+                            <h4><i class="fas fa-calendar-alt"></i> Monthly Budget</h4>
                             <button class="btn-gradient" style="width:auto; padding:6px 12px; font-size:12px;" onclick="setBudget('monthly')">Set</button>
                         </div>
                         <div class="budget-amount" id="monthlyBudgetAmount">Not set</div>
@@ -927,6 +929,7 @@
                         <div class="user-avatar" style="width: 100px; height: 100px; margin: 0 auto 20px; font-size: 40px;">👤</div>
                         <h2 id="profileName"></h2>
                         <p id="profileEmail" style="color: var(--gray);"></p>
+                        <button class="btn-gradient" onclick="openEditProfileModal()" style="margin-top: 20px;">Edit Profile</button>
                     </div>
                 </div>
             </div>
@@ -1000,6 +1003,25 @@
         </div>
     </div>
 
+    <!-- Edit Profile Modal -->
+    <div id="editProfileModal" class="modal">
+        <div class="modal-content">
+            <h3><i class="fas fa-user-edit"></i> Edit Profile</h3>
+            <div class="floating-input">
+                <i class="fas fa-user"></i>
+                <input type="text" id="editName" placeholder=" ">
+                <label>Name</label>
+            </div>
+            <div class="floating-input">
+                <i class="fas fa-phone"></i>
+                <input type="tel" id="editPhone" placeholder=" ">
+                <label>Phone Number</label>
+            </div>
+            <button class="btn-gradient" onclick="updateProfile()">Update Profile</button>
+            <button class="btn-gradient" onclick="closeEditProfileModal()" style="background:#64748b; margin-top:10px;">Cancel</button>
+        </div>
+    </div>
+
     <!-- Budget Modal -->
     <div id="budgetModal" class="modal">
         <div class="modal-content">
@@ -1034,23 +1056,10 @@
             { text: "A penny saved is a penny earned. - Benjamin Franklin", icon: "💎" },
             { text: "Do not save what is left after spending, but spend what is left after saving.", icon: "📊" },
             { text: "Financial freedom is available to those who learn about it and work for it.", icon: "🚀" },
-            { text: "The stock market is a device for transferring money from the impatient to the patient.", icon: "📈" },
             { text: "Rich people have small TVs and big libraries, and poor people have small libraries and big TVs.", icon: "📚" },
             { text: "It's not how much money you make, but how much money you keep.", icon: "💪" },
             { text: "Compound interest is the eighth wonder of the world.", icon: "✨" },
-            { text: "Track your expenses daily and you'll never wonder where your money went!", icon: "📝" },
-            { text: "Small savings today = Big wealth tomorrow!", icon: "🎯" }
-        ];
-
-        const financialTips = [
-            "💡 Tip: Follow the 50/30/20 rule - 50% needs, 30% wants, 20% savings",
-            "💡 Tip: Use the envelope method to control spending in different categories",
-            "💡 Tip: Pay your credit card bills in full to avoid interest charges",
-            "💡 Tip: Create an emergency fund covering 3-6 months of expenses",
-            "💡 Tip: Automate your savings - set up automatic transfers to savings account",
-            "💡 Tip: Review your subscriptions monthly - cancel what you don't use",
-            "💡 Tip: Cook at home more often to save significantly on food costs",
-            "💡 Tip: Use cashback apps and reward programs for everyday purchases"
+            { text: "Track your expenses daily and you'll never wonder where your money went!", icon: "📝" }
         ];
 
         // Rotate quotes every 30 seconds
@@ -1155,6 +1164,42 @@
             document.getElementById('addTransactionModal').style.display = 'none';
             document.getElementById('transactionForm').reset();
             setTransactionType('expense');
+        }
+
+        function openEditProfileModal() {
+            document.getElementById('editName').value = localStorage.getItem('userName');
+            document.getElementById('editPhone').value = localStorage.getItem('userPhone') || '';
+            document.getElementById('editProfileModal').style.display = 'flex';
+        }
+
+        function closeEditProfileModal() {
+            document.getElementById('editProfileModal').style.display = 'none';
+        }
+
+        async function updateProfile() {
+            const name = document.getElementById('editName').value;
+            if (!name) {
+                showToast('Please enter a name', 'error');
+                return;
+            }
+            try {
+                const res = await fetch(API_URL + '/profile/update-name', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                    body: JSON.stringify({ name })
+                });
+                if (res.ok) {
+                    localStorage.setItem('userName', name);
+                    document.getElementById('userNameDisplay').innerHTML = name;
+                    document.getElementById('profileName').innerHTML = name;
+                    closeEditProfileModal();
+                    showToast('Profile updated successfully!', 'success');
+                } else {
+                    showToast('Failed to update profile', 'error');
+                }
+            } catch (error) {
+                showToast('Error updating profile', 'error');
+            }
         }
 
         function setBudget(type) {
@@ -1327,14 +1372,6 @@
             document.getElementById('profileName').innerHTML = localStorage.getItem('userName');
             document.getElementById('profileEmail').innerHTML = localStorage.getItem('userEmail');
             await loadTransactions();
-            
-            // Show random financial tip
-            const randomTip = financialTips[Math.floor(Math.random() * financialTips.length)];
-            const tipElement = document.createElement('div');
-            tipElement.className = 'quotes-section';
-            tipElement.style.marginTop = '20px';
-            tipElement.innerHTML = `<i class="fas fa-lightbulb"></i><p>${randomTip}</p>`;
-            document.getElementById('dashboard-page').appendChild(tipElement);
         }
 
         async function loadTransactions() {
@@ -1366,6 +1403,7 @@
         }
 
         function updateCharts() {
+            // Category-wise expenses
             const categoryTotals = {};
             allTransactions.filter(t => t.type === 'expense').forEach(t => {
                 categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
@@ -1382,15 +1420,18 @@
                         backgroundColor: Object.keys(categoryTotals).map(c => categoryColors[c] || '#64748b')
                     }]
                 },
-                options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+                options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } } }
             });
             
+            // Monthly trend - FIXED: Correct month display
             const months = [];
             const monthlyTotals = [];
+            const now = new Date();
             for (let i = 5; i >= 0; i--) {
                 const d = new Date();
-                d.setMonth(d.getMonth() - i);
-                months.push(d.toLocaleString('default', { month: 'short' }));
+                d.setMonth(now.getMonth() - i);
+                const monthName = d.toLocaleString('default', { month: 'short' });
+                months.push(monthName);
                 const monthTotal = allTransactions.filter(t => {
                     const tDate = new Date(t.date);
                     return t.type === 'expense' && tDate.getMonth() === d.getMonth() && tDate.getFullYear() === d.getFullYear();
@@ -1405,13 +1446,19 @@
                 data: {
                     labels: months,
                     datasets: [{
-                        label: 'Monthly Expenses',
+                        label: 'Monthly Expenses (₹)',
                         data: monthlyTotals,
                         backgroundColor: '#667eea',
-                        borderRadius: 8
+                        borderRadius: 8,
+                        barPercentage: 0.7
                     }]
                 },
-                options: { responsive: true }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: true,
+                    plugins: { legend: { position: 'top', labels: { font: { size: 10 } } } },
+                    scales: { y: { beginAtZero: true } }
+                }
             });
         }
 
